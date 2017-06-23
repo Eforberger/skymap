@@ -44,6 +44,7 @@ body {
 <script src="astro.js"></script>
 <script src="astro.constants.js"></script>
 <script src="astro.coordinates.js"></script>
+
 <script>
 // Object.assign polyfill
 if (typeof Object.assign != 'function') {
@@ -248,31 +249,39 @@ astrojs.ready(function(e){
 
 //WORKING AREA
 var stringtext = "";
-function readTextFile(file, ready)
-{
+function readTextFile(files, ready){
+//console.log(file);
 
+var output = [];
+
+for (q = 0; q < files.length; q++){
    var rawFile = new XMLHttpRequest();
-    rawFile.open("GET", file);
+    rawFile.open("GET", files[q]);
     rawFile.onload = function(data) {
     	console.log("onload");
     	console.log(data);
+    	  
     };
+       // console.log("reading " + files[q]);
     rawFile.overrideMimeType("text/plain; charset=x-user-defined");
-    rawFile.onreadystatechange = function ()
+    rawFile.onreadystatechange = function(rawFile){ return function ()
     {
+    //console.log("reading " + rawFile);
         if(rawFile.readyState === 4)
         {
             if(rawFile.status === 200 || rawFile.status == 0)
             {
-                stringtext = rawFile.responseText;
-                //console.log(rawFile);
-                ready(stringtext);
-
+                output.push(rawFile.responseText);
+                if (output.length >= files.length){
+                   console.log('ready');
+                ready(output);
+                }//here
+             
             }
         }
-    };
-    
-    rawFile.addEventListener("progress", function(){console.log("progress");});
+     
+  	}; }(rawFile);
+     rawFile.addEventListener("progress", function(){console.log("progress");});
 	rawFile.addEventListener("load", function(){console.log("load");});
 	rawFile.addEventListener("error", function(evt){
 		console.log("error");
@@ -280,37 +289,50 @@ function readTextFile(file, ready)
 	});
 	rawFile.addEventListener("abort", function(){console.log("abort");});
     rawFile.send();
-    
-
+    }//here
 }
 
-readTextFile("/output.txt", function(stringtext){
+
+
+/*
+Type: Shower, Track, null
+Kind: Neutrino, gamma_ray, other
+*/
+
+var files = [ "/fermit.txt", "/output_Observation.txt"];
+readTextFile(files, function(stringout){
 var hese = [];
-	var param = {'type': [ 'Shower', 'Track' ], 'kind': ['Neutrino', 'bean','ostritch', 'GammaRay' ], 'energyMin': "0", 'energyMax' : '100'};
+	var param = {'type': [ 'Shower','Track', 'null' ], 'kind': [ 'Neutrino','gamma_ray', 'other'], 
+				 'energyMinNeutrino': "0", 'energyMaxNeutrino' : '100', 'energyMingamma_ray': "0", 'energyMaxgamma_ray' : '100'};
 console.log(param);
+console.log(stringout);
+for (var k = 0; k < stringout.length; k++){
+	if (!param['kind'].includes(stringout[k].split("\n")[0].split(" ")[9])){
+		continue;
+	}
+	stringtext = stringout[k];
 	var words = stringtext.split("\n");
-	console.log(words);
-	for (var o  = 0; o < 20; o++)
-	{
-	//console.log(words[0]);
-	console.log("O : "+o);
+	var o = 0;
+	while(o < 30 ){//2000 for gammaray
 		var word = words[o].split(" ");
-		console.log(word[9] + "WORD 9");
-		//console.log(param);
-		//if (param['kind'].includes(word[9]){ //NOT WORKING FOR SOME REASON, RETURN TO THIS LATER
+		//if (param["kind"].includes(word[9])){ //NOT WORKING FOR SOME REASON, RETURN TO THIS LATERparam['kind'].index(
 			 if (param["type"].includes(word[7])){
-		 		if (param['energyMin'] <= word[11] && param['energyMax'] <= word[11]){
-            	    	    hese.splice(-1, 0, {dec: parseInt(word[1]), ra: parseInt(word[3]), err: parseInt(word[5]), type: types[word[7].toLowerCase()], kind: word[9]});
+		 		if (param['energyMinNeu'] <= word[11] && param['energyMaxNeu'] <= word[11] || word[11] === undefined){
+            	    	    hese.splice(-1, 0, {dec: parseInt(word[1]), ra: parseInt(word[3]), 
+            	    	    err: parseInt(word[5]), type: types[word[7].toLowerCase()],
+            	    	    kind: word[9], energy: parseInt(word[11])});
+            	    	    o ++;
             	}
 			 }
-		//}
+	//	}
 		
 		 
 		
 		//hese.splice(-1, 0, {'dec': word[1], 'ra': word[3], 'err': word[5], 'type': types[word[7].toLowerCase()], 'kind': "Neutrino"});
 	}
-	console.log("TYPE" + hese[7]["type"]);
-	console.log(hese);
+	}
+	//console.log("TYPE" + hese[7]["type"]);
+	//console.log(hese);
 	
 
 //Data from emm
@@ -452,7 +474,7 @@ console.log(param);
 		  text: ""+(i+1)
 		});
 		if (hese[i].err > 6)
-		console.log("IN ERR DRAWER");
+		//console.log("IN ERR DRAWER");
 		  mydraw.circle({
 			coords: [hese[i].ra, hese[i].dec],
 			radius: hese[i].err,
@@ -461,32 +483,24 @@ console.log(param);
 		  });
 	  }
 	  
-	  if (hese[i]["kind"] == "GammaRay"){
+	  if (hese[i]["kind"] == "gamma_ray"){
 		mydraw.circle({
 		  coords: [hese[i].ra, hese[i].dec],
-		  radius: 6,
+		  radius: 2,
 		  fill: true,
 		  stroke: false,
-		  fillStyle: "green",
-		  raw: true
-		})
-		mydraw.circle({
-		  coords: [hese[i].ra, hese[i].dec],
-		  radius: 3,
-		  fill: true,
-		  stroke: false,
-		  fillStyle: "black",
+		  fillStyle: "green", //findColor(parseInt(hese[i]['energy'])),
 		  raw: true
 		})
 		/*   Gamma Rays don't have types.
 		if (hese[i].type != undefined && hese[i].type != null) {
 		  hese[i].type(mydraw, project([hese[i].ra, hese[i].dec]), 6);
-		}*/
+		}
 		mydraw.text({
 		  coords: [hese[i].ra, hese[i].dec],
 		  font: "16px sans-serif",
 		  text: ""+(i+1)
-		});
+		});*/ 
 		if (hese[i].err > 6)
 		  mydraw.circle({
 			coords: [hese[i].ra, hese[i].dec],
@@ -494,13 +508,25 @@ console.log(param);
 			strokeStyle: "green",
 			wrap: true
 		  });
+		
 	  }
+	  else {
+		  	//console.log(hese[i]['kind'] + ": I");
+		  }
 	  
-		function findColor(i){//WORK ON
-			
 		}
-	  }
-	});
+});
+
+/*function decimalToHexString(enr)
+{
+    if (enr*33)+16711680 < 0)
+    {
+        return = (0xFFFFFFFF + enr*33+16711680 + 1).toString(16).toUpperCase();
+    }
+
+    break;
+}*/
+
 });
 </script>
 </body>
